@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx" width="1024" height="768"
+					   creationComplete="init()">
+	<fx:Declarations>
+		<mx:HTTPService id="songService" showBusyCursor="true" result="recieved()" url="list.data" />
+	</fx:Declarations>
+	
+	<s:VGroup width="100%" height="100%" paddingLeft="10" paddingRight="10" paddingTop="10" paddingBottom="10">
+		<s:HGroup width="100%" paddingTop="10" paddingBottom="10" verticalAlign="middle">
+			<s:Label text="Search: " width="59"/>
+			<s:TextInput width="100%" change="searchFunc()" id="txt_search"/>
+		</s:HGroup>
+		<s:HGroup width="100%" height="32" verticalAlign="middle" textAlign="center">
+			<s:Label text="3-с дээш тэмдэгч бичиж хайлт хийнэ. Мөн татагдаж байгаа дуунууд шууд &quot;Documents&quot; хавтаст хадгалагдаж байгаа. Учир нь татах тоолонд асуугаад байх ядаргаатай санагдав." fontSize="11" width="100%"/>
+		</s:HGroup>
+		<s:HGroup width="100%" height="100%">
+			<mx:DataGrid width="680" height="100%" dataProvider="{arrSongs}" id="grid_songs">
+				<mx:columns>
+					<mx:DataGridColumn headerText="ID" dataField="col1" width="60" />
+					<mx:DataGridColumn headerText="Name" dataField="col2"/>
+					<mx:DataGridColumn width="100">
+						<mx:itemRenderer>
+							<fx:Component>
+								<mx:HBox textAlign="center" paddingLeft="5" horizontalScrollPolicy="off" verticalAlign="middle">
+									
+									<fx:Script>
+									<![CDATA[
+										import mx.controls.Alert;
+										
+										private var sid:String = '';
+										
+										override public function set data(value:Object):void {
+											super.data = value;
+											sid = String(data.col1);
+										}
+										protected function button1_clickHandler(event:MouseEvent):void
+										{
+											//Alert.show(sid);
+											outerDocument.addSong();
+										}
+									]]>
+								</fx:Script>
+									<s:Button label="Download" click="button1_clickHandler(event)"/>
+								</mx:HBox>
+							</fx:Component>
+						</mx:itemRenderer>
+					</mx:DataGridColumn>
+				</mx:columns>
+			</mx:DataGrid>
+			<mx:DataGrid width="100%" height="100%" dataProvider="{arrDownload}">
+				<mx:columns>
+					<mx:DataGridColumn headerText="Downloading" itemRenderer="songDownloader" dataField="col1"/>
+				</mx:columns>
+			</mx:DataGrid>
+		</s:HGroup>
+	</s:VGroup>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.managers.CursorManager;
+			import flash.net.navigateToURL;
+			import flash.sampler.NewObjectSample;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.XMLListCollection;
+			import mx.controls.Alert;
+			
+			private var dp:Object;
+			
+			import flash.display.Shape;
+			import flash.display.Sprite;
+			import flash.errors.IOError;
+			import flash.events.*;
+			import flash.filters.*;
+			import flash.geom.*;
+			import flash.media.Sound;
+			import flash.media.SoundChannel;
+			import flash.media.SoundMixer;
+			import flash.media.SoundTransform;
+			import flash.net.URLRequest;
+			import flash.text.TextField;
+			import flash.text.TextFormat;
+			import flash.utils.*;
+			
+			
+			[Bindable] public var arrSongs:ArrayCollection;
+			[Bindable] public var arrDownload:ArrayCollection;
+			public var mainList:ArrayCollection;
+			
+			private function init():void{
+				songService.send();
+				arrDownload = new ArrayCollection();
+				
+				var timer:Timer = new Timer(2000);
+				timer.addEventListener(TimerEvent.TIMER, updateSongList);
+				timer.start(); 
+			}
+			
+			private function updateSongList(event:TimerEvent):void{
+				for(var i:int = 0; i<arrDownload.length; i++){
+					if( arrDownload.getItemAt(i).col3.toString() == '1' ){
+						arrDownload.removeItemAt(i);
+					}
+				}
+			}
+			
+			public function addSong():void{
+				if( grid_songs.selectedItem != null ){
+					var obj:Object = new Object();
+					obj.col1 = grid_songs.selectedItem.col2;
+					obj.col2 = grid_songs.selectedItem.col1;
+					obj.col3 = "0";
+					
+					arrDownload.addItem(obj);
+				}
+			}
+			
+			private function recieved():void{
+				
+				if (songService.lastResult.item!=undefined) {
+					arrSongs = new ArrayCollection();
+					mainList = new ArrayCollection();
+					for (var i:Number=0; i<songService.lastResult.item.length; i++) {
+						var obj:Object = new Object();
+						obj.col1 = songService.lastResult.item[i].id;
+						obj.col2 = songService.lastResult.item[i].name;
+						
+						arrSongs.addItem(obj);
+						mainList.addItem(obj);
+					}
+				}
+			}
+			
+			public function searchFunc():void{
+				if(txt_search.text != null && txt_search.text != "" && txt_search.text.length > 3){
+					CursorManager.setBusyCursor();
+					arrSongs = new ArrayCollection();
+					for(var i:int = 0; i<mainList.length; i++){
+						if( mainList.getItemAt(i).col2.toString().toLowerCase().match(new RegExp(txt_search.text.toLowerCase(), 'i')) ){
+							var obj:Object = new Object();
+							obj.col1 = mainList.getItemAt(i).col1;
+							obj.col2 = mainList.getItemAt(i).col2;
+							arrSongs.addItem(obj);
+						}
+					}
+					CursorManager.removeBusyCursor();
+				}
+				else
+				{
+					CursorManager.setBusyCursor();
+					arrSongs = new ArrayCollection();
+					arrSongs = mainList;
+					CursorManager.removeBusyCursor();
+				}
+			}
+
+		]]>
+	</fx:Script>
+</s:WindowedApplication>

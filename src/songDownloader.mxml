@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:MXDataGridItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						  xmlns:s="library://ns.adobe.com/flex/spark" 
+						  xmlns:mx="library://ns.adobe.com/flex/mx" 
+						  focusEnabled="true" creationComplete="mxdatagriditemrenderer1_creationCompleteHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import flash.net.URLStream;
+			import flash.utils.flash_proxy;
+			
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.rpc.http.HTTPService;
+			
+			private var http_srv:HTTPService;
+			private var stream:URLStream;
+			private var destFileName:String = '';
+
+			protected function mxdatagriditemrenderer1_creationCompleteHandler(event:FlexEvent):void
+			{
+				http_srv = new HTTPService();
+				http_srv.url = "http://mongolduu-com.appspot.com/?code=" + data.col2;
+				http_srv.request = recieved;
+				http_srv.addEventListener(ResultEvent.RESULT, recieved);
+				http_srv.addEventListener(FaultEvent.FAULT, fault);
+				http_srv.send();
+				
+				stream = new URLStream();
+				stream.addEventListener(Event.COMPLETE, writeAirFile);
+				stream.addEventListener(ProgressEvent.PROGRESS, progressHandler);
+				stream.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+			}
+			
+			private function recieved(e:ResultEvent):void{
+				if (http_srv.lastResult.root!=undefined) {
+					var DOWNLOAD_URL:String = http_srv.lastResult.root[0].url;
+					destFileName =  http_srv.lastResult.root[0].name;
+					pb.label = destFileName + " %3%%";
+					var request:URLRequest = new URLRequest(DOWNLOAD_URL);
+					stream.load(request);
+				}
+			}
+			
+			private function fault(e:FaultEvent):void{
+				pb.label = e.message.toString();
+				data.col3 = 1;
+			}
+			
+			private function writeAirFile(evt:Event):void {
+				var fileData:ByteArray = new ByteArray();
+				stream.readBytes(fileData, 0, stream.bytesAvailable);
+				var file:File = File.documentsDirectory.resolvePath(destFileName);
+				var fileStream:FileStream = new FileStream();
+				fileStream.open(file, FileMode.WRITE);
+				fileStream.writeBytes(fileData,0,fileData.length);
+				fileStream.close();
+				data.col3 = 1;
+			}
+			
+			private function progressHandler(event:ProgressEvent):void{
+				pb.setProgress(event.bytesLoaded, event.bytesTotal);
+			}
+			private function ioErrorHandler(event:IOErrorEvent):void {
+				pb.label = event.text;
+				data.col3 = 1;
+			}
+
+		]]>
+	</fx:Script>
+	<s:HGroup width="100%" height="100%">
+		<mx:ProgressBar mode="manual" width="100%" labelPlacement="center" id="pb"/>
+	</s:HGroup>
+	
+</s:MXDataGridItemRenderer>
